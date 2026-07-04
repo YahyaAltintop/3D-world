@@ -1,0 +1,17 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# Firebase — proje kimliği ve deploy önbelleği repoya girmez
+.firebaserc
+.firebase/
+firebase-debug.log
+
+# Lokal editör/araç ayarları
+.claude/
+
+# Ortam değişkenleri
+.env
+.env.*
+!.env.example
