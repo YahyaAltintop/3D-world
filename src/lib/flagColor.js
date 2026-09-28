@@ -1,7 +1,8 @@
 import iso from 'i18n-iso-countries'
 
-// flagcdn.com bayrağı için alpha-2 kodu (Kosova'nın ISO kodu yok, flagcdn 'xk' kullanır)
-export function flagUrlFor(c) {
+// flagcdn.com bayrağı için alpha-2 kodu (Kosova'nın ISO kodu yok, flagcdn 'xk' kullanır).
+// width: flagcdn'in sunduğu genişliklerden biri (20, 40, 80, 160, 320, 640, 1280, 2560)
+export function flagUrlFor(c, width = 160) {
   let alpha2 = null
   if (c.english === 'Kosovo') alpha2 = 'xk'
   else if (/^\d{3}$/.test(c.id || '')) {
@@ -11,7 +12,7 @@ export function flagUrlFor(c) {
       alpha2 = null
     }
   }
-  return alpha2 ? `https://flagcdn.com/w160/${alpha2.toLowerCase()}.png` : ''
+  return alpha2 ? `https://flagcdn.com/w${width}/${alpha2.toLowerCase()}.png` : ''
 }
 
 const colorCache = new Map()

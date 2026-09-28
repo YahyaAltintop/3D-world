@@ -46,7 +46,7 @@ const MESSAGES = {
     flagAlt: (name) => `${name} bayrağı`,
     webglError: 'Tarayıcınız WebGL desteklemiyor — 3B küre görüntülenemiyor.',
     docTitle: 'Dünya · 3B Keşif',
-    metaDescription: 'Scroll ile dünyayı gezin — 3B interaktif dünya atlası',
+    metaDescription: 'Dünyayı 3B keşfet — interaktif 3B dünya atlası',
     billion: 'milyar',
     million: 'milyon',
     thousand: 'bin',

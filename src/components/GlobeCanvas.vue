@@ -50,9 +50,11 @@ let oceanMesh = null
 let countries = []
 let countryMeshes = []
 let labelPool = []
-// seçili ülkenin bayrak rengiyle boyanan iç dolgusu
+// seçili ülkenin sınırları içine giydirilen bayrak dolgusu
 let fillMesh = null
 let fillTargetOpacity = 0
+let fillToken = 0 // her seçimde artar; geç yüklenen eski bayrakları ayıklar
+const textureLoader = new THREE.TextureLoader().setCrossOrigin('anonymous')
 const FILL_OPACITY = 0.95
 let rafId = 0
 let disposed = false
@@ -417,29 +419,52 @@ function setHover(key, x, y) {
   }
 }
 
-// seçili ülkenin içini bayrak rengiyle dolduran mesh'i kur
+// seçili ülkenin sınırları içine bayrağını giydir; bayrak yüklenemezse (çevrimdışı,
+// bayrağı olmayan bölge) içi bayrağın baskın rengiyle boyanır
 function setFill(c) {
   removeFill()
-  const geo = buildFillGeometry(c, 1.0015)
-  if (!geo.getAttribute('position') || geo.getAttribute('position').count === 0) return
-  const mat = new THREE.MeshBasicMaterial({
-    // dikkat: selectedColor paylaşılan Color nesnesi — bayrak rengi gelince dolgu da güncellenir
-    color: selectedColor,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  })
-  fillMesh = new THREE.Mesh(geo, mat)
-  fillMesh.renderOrder = 1
-  globe.add(fillMesh)
-  fillTargetOpacity = FILL_OPACITY
+  const token = ++fillToken
+  const build = (tex) => {
+    // bu arada seçim değiştiyse ya da kaldırıldıysa geç gelen bayrağı at
+    if (disposed || token !== fillToken || selectedKey !== c.key) {
+      tex?.dispose()
+      return
+    }
+    const geo = buildFillGeometry(c, 1.0015, tex ? tex.image.width / tex.image.height : 1.5)
+    if (geo.getAttribute('position').count === 0) {
+      geo.dispose()
+      tex?.dispose()
+      return
+    }
+    if (tex) {
+      tex.colorSpace = THREE.SRGBColorSpace
+      // küre kenarına doğru eğik bakışta bayrak bulanıklaşmasın
+      tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
+    }
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      // dikkat: three.js rengi kopyalar, paylaşmaz — bayrak rengi gelince focusCountry ayrıca günceller
+      color: tex ? 0xffffff : selectedColor,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    })
+    fillMesh = new THREE.Mesh(geo, mat)
+    fillMesh.renderOrder = 1
+    globe.add(fillMesh)
+    fillTargetOpacity = FILL_OPACITY
+  }
+  const url = flagUrlFor(c, 640)
+  if (url) textureLoader.load(url, build, undefined, () => build(null))
+  else build(null)
 }
 
 function removeFill() {
   if (!fillMesh) return
   globe.remove(fillMesh)
   fillMesh.geometry.dispose()
+  fillMesh.material.map?.dispose()
   fillMesh.material.dispose()
   fillMesh = null
   fillTargetOpacity = 0
@@ -463,6 +488,8 @@ function focusCountry(c) {
   dominantFlagColor(flagUrlFor(c)).then((hex) => {
     if (hex && selectedKey === c.key) {
       selectedColor.set(hex)
+      // bayrak dokusu yoksa dolgu düz renktir; onu da bayrağın rengine çevir
+      if (fillMesh && !fillMesh.material.map) fillMesh.material.color.copy(selectedColor)
       markerEl.value?.style.setProperty('--marker-color', hex)
     }
   })
@@ -733,6 +760,7 @@ onBeforeUnmount(() => {
   document.body.classList.remove('globe-hover')
   if (resizeObserver) resizeObserver.disconnect()
   if (renderer) {
+    removeFill() // bayrak dokusunu da serbest bırakır
     scene.traverse((o) => {
       if (o.geometry) o.geometry.dispose()
       if (o.material) {
